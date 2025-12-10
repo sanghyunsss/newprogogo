@@ -1,0 +1,427 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Room {
+  id         Int      @id @default(autoincrement())
+  number     String   @unique
+  name       String?
+  contact    String?
+  carNo      String?
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  deviceId   String?
+  spaceId    String?
+  numberSort Int?
+  roomType   String?
+
+  dailyGuests DailyGuest[]
+  logs        DeviceControlLog[]
+  events      Event[]
+  changeLogs  RoomChangeLog[]
+
+  cleaningTasks CleaningTask[]
+}
+
+model DailyGuest {
+  id        Int      @id @default(autoincrement())
+  roomId    Int?
+  roomType  String?
+  name      String
+  contact   String
+  carNo     String?
+  startDate DateTime
+  endDate   DateTime
+  token     String   @unique @default(uuid())
+  createdAt DateTime @default(now())
+
+  // roomId 가 optional 이므로 Room 도 ? 로 맞춰준다.
+  room   Room?   @relation(fields: [roomId], references: [id])
+  events Event[] @relation("DailyGuestEvents")
+
+  cleaningTasks CleaningTask[]
+}
+
+model Event {
+  id       Int         @id @default(autoincrement())
+  roomId   Int
+  type     String
+  ts       DateTime
+  verified Boolean     @default(false)
+  dateKey  String
+  guestId  Int?
+  guest    DailyGuest? @relation("DailyGuestEvents", fields: [guestId], references: [id])
+  room     Room        @relation(fields: [roomId], references: [id])
+
+  @@index([dateKey])
+  @@index([guestId])
+}
+
+model AdminUser {
+  id              Int               @id @default(autoincrement())
+  email           String            @unique
+  password        String
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  role            AdminRole         @default(admin)
+  AdminLoginAudit AdminLoginAudit[]
+  sessions        AdminSession[]
+}
+
+model AdminLoginAudit {
+  id        Int       @id @default(autoincrement())
+  adminId   Int
+  ip        String?
+  ua        String?
+  note      String?
+  createdAt DateTime  @default(now())
+  admin     AdminUser @relation(fields: [adminId], references: [id])
+}
+
+model DeviceControlLog {
+  id           Int      @id @default(autoincrement())
+  roomId       Int
+  guestId      Int?
+  roomNumber   String
+  controlType  String
+  status       String
+  message      String?
+  requestBody  Json?
+  responseBody Json?
+  createdAt    DateTime @default(now())
+  actor        String   @default("system")
+  actorName    String?
+  room         Room     @relation(fields: [roomId], references: [id])
+
+  @@index([roomId])
+  @@index([guestId])
+}
+
+model RoomChangeLog {
+  id        Int      @id @default(autoincrement())
+  roomId    Int
+  actor     String
+  changes   Json
+  createdAt DateTime @default(now())
+  room      Room     @relation(fields: [roomId], references: [id])
+
+  @@index([roomId])
+}
+
+model SmsMessage {
+  id            Int         @id @default(autoincrement())
+  refKey        String
+  messageKey    String?
+  type          String
+  content       String
+  subject       String?
+  fromNumber    String?
+  senderProfile String
+  templateCode  String
+  scheduledAt   DateTime?
+  createdAt     DateTime    @default(now())
+  status        String      @default("requested")
+  guestToken    String?
+  targets       SmsTarget[]
+
+  @@index([messageKey])
+  @@index([refKey])
+  @@index([createdAt])
+}
+
+model SmsTarget {
+  id           Int        @id @default(autoincrement())
+  smsMessageId Int
+  to           String
+  name         String?
+  var1         String?
+  var2         String?
+  var3         String?
+  var4         String?
+  var5         String?
+  var6         String?
+  var7         String?
+  resultCode   String?
+  resultDesc   String?
+  createdAt    DateTime   @default(now())
+  message      SmsMessage @relation(fields: [smsMessageId], references: [id], onDelete: Cascade)
+
+  @@index([smsMessageId])
+  @@index([to])
+}
+
+model SmsOptOut {
+  id        Int      @id @default(autoincrement())
+  to        String   @unique
+  reason    String?
+  createdAt DateTime @default(now())
+}
+
+model SmsTemplate {
+  id           Int      @id @default(autoincrement())
+  kind         String   @unique
+  content      String
+  messageType  String
+  createdAt    DateTime @default(now())
+  subject      String?
+  templateCode String?
+  updatedAt    DateTime @updatedAt
+}
+
+model ParkingLog {
+  id            Int       @id @default(autoincrement())
+  createdAt     DateTime  @default(now())
+  guestId       Int?
+  roomId        Int?
+  roomNumber    String?
+  guestName     String?
+  carNo         String
+  source        String
+  note          String?
+  humaxStatus   Int?
+  humaxSyncedAt DateTime?
+}
+
+model AdminSession {
+  id        Int       @id @default(autoincrement())
+  adminId   Int
+  token     String    @unique
+  ip        String?
+  ua        String?
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+  admin     AdminUser @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([adminId])
+  @@index([expiresAt])
+}
+
+model AdminAccessLog {
+  id        Int      @id @default(autoincrement())
+  email     String
+  ip        String?
+  ua        String?
+  note      String?
+  createdAt DateTime @default(now())
+}
+
+model AdminRequestLog {
+  id        Int      @id @default(autoincrement())
+  ip        String
+  ua        String?
+  path      String?
+  who       String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([ip])
+}
+
+model AdminBannedIP {
+  id        Int       @id @default(autoincrement())
+  ip        String    @unique
+  reason    String?
+  until     DateTime?
+  createdAt DateTime  @default(now())
+}
+
+enum EventType {
+  checkin
+  checkout
+}
+
+enum AdminRole {
+  owner
+  admin
+}
+
+/**
+ * ====== Cleaning ======
+ */
+
+enum CleaningStatus {
+  PENDING
+  DOING
+  DONE
+  HOLD
+}
+
+model CleaningWorker {
+  id        Int      @id @default(autoincrement())
+  name      String
+  phone     String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tasks  CleaningTask[]
+  tokens CleaningToken[]
+  rates  CleaningRate[] // 단가 반대필드
+
+  @@index([isActive])
+}
+
+model CleaningRate {
+  id        Int      @id @default(autoincrement())
+  workerId  Int
+  roomType  String
+  amount    Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  worker CleaningWorker @relation(fields: [workerId], references: [id], onDelete: Cascade)
+
+  @@unique([workerId, roomType])
+  @@index([workerId])
+}
+
+model CleaningTask {
+  id           Int            @id @default(autoincrement())
+  guestId      Int?
+  roomId       Int
+  workerId     Int?
+  date         DateTime
+  checkoutTime DateTime?
+  status       CleaningStatus @default(PENDING)
+  memo         String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  room   Room                @relation(fields: [roomId], references: [id])
+  worker CleaningWorker?     @relation(fields: [workerId], references: [id])
+  guest  DailyGuest?         @relation(fields: [guestId], references: [id])
+  photos CleaningTaskPhoto[]
+
+  @@unique([roomId, date])
+  @@index([date, status])
+  @@index([roomId, date])
+}
+
+model CleaningTaskPhoto {
+  id         Int          @id @default(autoincrement())
+  taskId     Int
+  url        String
+  uploadedAt DateTime     @default(now())
+  task       CleaningTask @relation(fields: [taskId], references: [id])
+
+  @@index([taskId])
+}
+
+model CleaningToken {
+  id        Int      @id @default(autoincrement())
+  workerId  Int
+  date      DateTime
+  token     String   @unique
+  valid     Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  worker CleaningWorker @relation(fields: [workerId], references: [id])
+
+  @@index([workerId, date])
+}
+
+/**
+ * ====== Reverse Tax Invoice (구분소유자 ↔ 모어댄속초해변점) ======
+ *
+ * 공급자(매출자) : UnitOwner(구분소유자)
+ * 공급받는자(매입자) : Company(모어댄속초해변점)
+ */
+
+enum TaxInvoiceStatus {
+  PENDING       // 역발행 준비중
+  REQUESTED     // 역발행 요청 보냄
+  ISSUED        // 세금계산서 발행 완료
+  CANCELED      // 취소
+}
+
+/** 구분소유자 구분: 개인 / 법인 */
+enum OwnerType {
+  INDIVIDUAL  // 개인
+  CORPORATION // 법인
+}
+
+/** 구분소유자 상태: 입금/계약 관련 */
+enum OwnerStatus {
+  PENDING_PAYMENT    // 계약대기
+  PAID        // 계약완료
+  TERMINATED // 계약해지
+}
+
+model Company {
+  id        Int      @id @default(autoincrement())
+  name      String
+  bizNo     String   @unique
+  ceoName   String?
+  address   String?
+  bizType   String?  // 업태
+  bizItem   String?  // 종목
+  phone     String?
+  email     String?
+  memo      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  taxInvoices ReverseTaxInvoice[]
+}
+
+model UnitOwner {
+  id        Int       @id @default(autoincrement())
+  name      String    // 상호/성명
+  bizNo     String?   // 사업자등록번호(개인: null 가능)
+  ceoName   String?
+  address   String?
+  bizType   String?   // 업태
+  bizItem   String?   // 종목
+  phone     String?
+  email     String?
+  roomInfo  String?   // 호실/계약번호 등 메모
+
+  // 추가 필드들
+  ownerType   OwnerType?           // 개인/법인 구분 (선택)
+  status      OwnerStatus @default(PENDING_PAYMENT)
+  registryNo  String?              // 등기번호
+  contractNo  String?              // 계약번호
+  bankName    String?              // 은행명
+  bankAccount String?              // 계좌번호
+
+  memo      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  taxInvoices ReverseTaxInvoice[]
+}
+
+model ReverseTaxInvoice {
+  id          Int              @id @default(autoincrement())
+  ownerId     Int              // 공급자(구분소유자)
+  companyId   Int              // 공급받는자(모어댄속초해변점)
+  issueDate   DateTime         // 작성일자
+  supplyDate  DateTime?        // 공급시기(월말 등)
+  yearMonth   String?          // "2025-11" 형식
+  title       String?          // 품목(예: 위탁운영수수료)
+  qty         Int              @default(1)
+  unitPrice   Int              @default(0)
+  supplyValue Int              // 공급가액
+  vat         Int              // 세액
+  total       Int              // 합계금액
+  roomInfo    String?          // 객실/계약번호 메모
+  memo        String?
+  status      TaxInvoiceStatus @default(PENDING)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  owner   UnitOwner @relation(fields: [ownerId], references: [id])
+  company Company   @relation(fields: [companyId], references: [id])
+
+  @@index([ownerId])
+  @@index([companyId])
+  @@index([issueDate])
+}

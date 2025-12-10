@@ -1,0 +1,13 @@
+{
+  "name": "humax-auto",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "node humax-register.js"
+  },
+  "dependencies": {
+    "node-fetch": "^3.3.2",
+    "form-data": "^4.0.0",
+    "dotenv": "^16.4.5"
+  }
+}

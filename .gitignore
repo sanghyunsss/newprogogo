@@ -1,0 +1,11 @@
+node_modules/
+.next/
+uploads/
+prisma/*.db
+prisma/*.db*
+prisma/dev*.*
+prisma/_migrations_backup/
+.env
+*.log
+*.sqlite
+.DS_Store
