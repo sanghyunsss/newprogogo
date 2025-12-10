@@ -11,7 +11,7 @@ module.exports = {
         PORT: 3000,                   // 포트 지정
         DATABASE_URL: "file:/var/www/hotel-app/prisma/dev.db",
         BIZPPURIO_ACCOUNT: "morethanbc",  // ✅ 실제 값 반영
-        BIZPPURIO_AUTH_KEY: "799330d0b6f0d14b669b82314f178158f63f45a1a9d5d1276c89a7fc1714ec88",   // ✅ 실제 키 반영
+        BIZPPURIO_AUTH_KEY: "7b669b82314f178158f63f45a1a9d5d1276c89a7fc1714ec88",   // ✅ 실제 키 반영
       },
     },
   ],
